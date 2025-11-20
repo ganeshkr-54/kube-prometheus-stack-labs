@@ -1,0 +1,48 @@
+config:
+  clients:
+    - url: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+
+  positions:
+    filename: /run/promtail/positions.yaml
+
+  snippets:
+    pipelineStages:
+      - docker: {}        # handles CRI format
+      - json:             # parses microservice JSON logs
+          expressions:
+            severity: severity
+            msg: message
+            service: serviceContext.service
+            trace_id: traceId
+      - labels:           # turn fields into labels for LogQL
+          severity:
+          service:
+          trace_id:
+
+daemonset:
+  enabled: true
+
+serviceMonitor:
+  enabled: true
+
+extraScrapeConfigs:
+  - job_name: kubernetes-pods
+    kubernetes_sd_configs:
+      - role: pod
+    pipeline_stages:
+      - docker: {}
+      - json:
+          expressions:
+            severity: severity
+            msg: message
+            service: serviceContext.service
+            trace_id: traceId
+      - labels:
+          severity:
+          service:
+          trace_id:
+    relabel_configs:
+      - source_labels: [ __meta_kubernetes_pod_label_app ]
+        target_label: app
+      - source_labels: [ __meta_kubernetes_namespace ]
+        target_label: namespace

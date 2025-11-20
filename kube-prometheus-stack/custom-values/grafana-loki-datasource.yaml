@@ -1,0 +1,9 @@
+grafana:
+  additionalDataSources:
+    - name: Loki
+      type: loki
+      access: proxy
+      uid: Loki
+      url: http://loki-gateway.monitoring.svc.cluster.local
+      jsonData:
+        maxLines: 5000
