@@ -1,4 +1,17 @@
 grafana:
+  dashboardProviders:
+    dashboardproviders.yaml:
+      apiVersion: 1
+      providers:
+        - name: "kubernetes-logs"
+          orgId: 1
+          folder: "Kubernetes Logs"
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/kubernetes-logs
+
   dashboards:
     kubernetes-logs:
       k8s-logs-dashboard:
@@ -9,6 +22,7 @@ grafana:
             "schemaVersion": 38,
             "version": 1,
             "refresh": "10s",
+            "tags": ["kubernetes", "logs", "loki"],
 
             "templating": {
               "list": [

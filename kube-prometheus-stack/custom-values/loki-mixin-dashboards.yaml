@@ -1,0 +1,13 @@
+grafana:
+  dashboards:
+    loki-mixin:
+      operations:
+        file: custom-values/loki-mixin-dashboards/operations.json
+      reads:
+        file: custom-values/loki-mixin-dashboards/reads.json
+      writes:
+        file: custom-values/loki-mixin-dashboards/writes.json
+      retention:
+        file: custom-values/loki-mixin-dashboards/retention.json
+      usage:
+        file: custom-values/loki-mixin-dashboards/usage.json
