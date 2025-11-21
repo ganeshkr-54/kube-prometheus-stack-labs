@@ -1,132 +1,127 @@
-grafana:
-  dashboardProviders:
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
-        - name: "kubernetes-logs"
-          orgId: 1
-          folder: "Kubernetes Logs"
-          type: file
-          disableDeletion: false
-          editable: true
-          options:
-            path: /var/lib/grafana/dashboards/kubernetes-logs
+# # grafana:
+# #   sidecar:
+# #     dashboards:
+# #       enabled: true
+# #       label: grafana_dashboard
+# #       folderAnnotation: grafana_dashboard_folder
+# #       searchNamespace: ALL
 
-  dashboards:
-    kubernetes-logs:
-      k8s-logs-dashboard:
-        json: |
-          {
-            "uid": "k8s-logs-overview",
-            "title": "Kubernetes / Logs Overview (Loki)",
-            "schemaVersion": 38,
-            "version": 1,
-            "refresh": "10s",
-            "tags": ["kubernetes", "logs", "loki"],
+# #   dashboards:
+# #     kubernetes-logs:
+# #       k8s-logs-dashboard:
+# #         folder: "Kubernetes Logs"
+#         json: |
+#           {
+#             "uid": "k8s-logs-overview",
+#             "title": "Kubernetes / Logs Overview (Loki)",
+#             "schemaVersion": 38,
+#             "version": 1,
+#             "refresh": "10s",
+#             "tags": ["kubernetes", "logs", "loki"],
 
-            "templating": {
-              "list": [
-                {
-                  "name": "namespace",
-                  "type": "query",
-                  "label": "Namespace",
-                  "datasource": { "type": "loki", "uid": "Loki" },
-                  "query": "label_values(namespace)",
-                  "includeAll": true,
-                  "multi": true
-                },
-                {
-                  "name": "pod",
-                  "type": "query",
-                  "label": "Pod",
-                  "datasource": { "type": "loki", "uid": "Loki" },
-                  "query": "label_values({namespace=~\"$namespace\"}, pod)",
-                  "includeAll": true,
-                  "multi": true
-                },
-                {
-                  "name": "container",
-                  "type": "query",
-                  "label": "Container",
-                  "datasource": { "type": "loki", "uid": "Loki" },
-                  "query": "label_values({namespace=~\"$namespace\", pod=~\"$pod\"}, container)",
-                  "includeAll": true,
-                  "multi": true
-                }
-              ]
-            },
+#             "templating": {
+#               "list": [
+#                 {
+#                   "name": "namespace",
+#                   "type": "query",
+#                   "label": "Namespace",
+#                   "datasource": { "type": "loki", "uid": "Loki" },
+#                   "query": "label_values(namespace)",
+#                   "includeAll": true,
+#                   "multi": true
+#                 },
+#                 {
+#                   "name": "pod",
+#                   "type": "query",
+#                   "label": "Pod",
+#                   "datasource": { "type": "loki", "uid": "Loki" },
+#                   "query": "label_values({namespace=~\"$namespace\"}, pod)",
+#                   "includeAll": true,
+#                   "multi": true
+#                 },
+#                 {
+#                   "name": "container",
+#                   "type": "query",
+#                   "label": "Container",
+#                   "datasource": { "type": "loki", "uid": "Loki" },
+#                   "query": "label_values({namespace=~\"$namespace\", pod=~\"$pod\"}, container)",
+#                   "includeAll": true,
+#                   "multi": true
+#                 }
+#               ]
+#             },
 
-            "panels": [
-              {
-                "type": "logs",
-                "title": "Live Logs (Namespace → Pod → Container)",
-                "datasource": { "type": "loki", "uid": "Loki" },
-                "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
-                "targets": [
-                  {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}",
-                    "refId": "A"
-                  }
-                ],
-                "options": {
-                  "wrapLogMessage": true,
-                  "showTime": true,
-                  "showLabels": true
-                }
-              },
+#             "panels": [
+#               {
+#                 "type": "logs",
+#                 "title": "Live Logs (Namespace → Pod → Container)",
+#                 "datasource": { "type": "loki", "uid": "Loki" },
+#                 "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+#                 "targets": [
+#                   {
+#                     "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}",
+#                     "refId": "A"
+#                   }
+#                 ],
+#                 "options": {
+#                   "wrapLogMessage": true,
+#                   "showTime": true,
+#                   "showLabels": true
+#                 }
+#               },
 
-              {
-                "type": "timeseries",
-                "title": "Log Volume (Lines per Second)",
-                "datasource": { "type": "loki", "uid": "Loki" },
-                "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
-                "targets": [
-                  {
-                    "expr": "sum(rate({namespace=~\"$namespace\"}[1m])) by (namespace)",
-                    "legendFormat": "{{namespace}}",
-                    "refId": "A"
-                  }
-                ]
-              },
+#               {
+#                 "type": "timeseries",
+#                 "title": "Log Volume (Lines per Second)",
+#                 "datasource": { "type": "loki", "uid": "Loki" },
+#                 "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+#                 "targets": [
+#                   {
+#                     "expr": "sum(rate({namespace=~\"$namespace\"}[1m])) by (namespace)",
+#                     "legendFormat": "{{namespace}}",
+#                     "refId": "A"
+#                   }
+#                 ]
+#               },
 
-              {
-                "type": "timeseries",
-                "title": "Error Rate per Namespace",
-                "datasource": { "type": "loki", "uid": "Loki" },
-                "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
-                "targets": [
-                  {
-                    "expr": "sum(rate({namespace=~\"$namespace\"} |= \"error\" [5m])) by (namespace)",
-                    "legendFormat": "{{namespace}} errors/s",
-                    "refId": "A"
-                  }
-                ]
-              },
+#               {
+#                 "type": "timeseries",
+#                 "title": "Error Rate per Namespace",
+#                 "datasource": { "type": "loki", "uid": "Loki" },
+#                 "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+#                 "targets": [
+#                   {
+#                     "expr": "sum(rate({namespace=~\"$namespace\"} |= \"error\" [5m])) by (namespace)",
+#                     "legendFormat": "{{namespace}} errors/s",
+#                     "refId": "A"
+#                   }
+#                 ]
+#               },
 
-              {
-                "type": "table",
-                "title": "Top Error Messages",
-                "datasource": { "type": "loki", "uid": "Loki" },
-                "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
-                "targets": [
-                  {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\"} |= \"error\" | json | msg [5m])) by (msg))",
-                    "refId": "A"
-                  }
-                ]
-              },
+#               {
+#                 "type": "table",
+#                 "title": "Top Error Messages",
+#                 "datasource": { "type": "loki", "uid": "Loki" },
+#                 "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
+#                 "targets": [
+#                   {
+#                     "expr": "topk(10, sum(rate({namespace=~\"$namespace\"} |= \"error\" | json | msg [5m])) by (msg))",
+#                     "refId": "A"
+#                   }
+#                 ]
+#               },
 
-              {
-                "type": "logs",
-                "title": "Errors Only",
-                "datasource": { "type": "loki", "uid": "Loki" },
-                "gridPos": { "x": 0, "y": 26, "w": 24, "h": 10 },
-                "targets": [
-                  {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} |= \"error\"",
-                    "refId": "A"
-                  }
-                ]
-              }
-            ]
-          }
+#               {
+#                 "type": "logs",
+#                 "title": "Errors Only",
+#                 "datasource": { "type": "loki", "uid": "Loki" },
+#                 "gridPos": { "x": 0, "y": 26, "w": 24, "h": 10 },
+#                 "targets": [
+#                   {
+#                     "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} |= \"error\"",
+#                     "refId": "A"
+#                   }
+#                 ]
+#               }
+#             ]
+#           }

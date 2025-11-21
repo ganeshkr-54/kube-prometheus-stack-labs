@@ -11,8 +11,8 @@ loki:
       ruler: loki-ruler
       admin: loki-admin
     azure:
-      accountName: lokistorage24055
-      accountKey: /kpjJ48L1H1ksXkGE0vtwPQRcnS5sqyUjXykPrFUluTnw66g0sRCeEjp65VDQK2OeKjVMx4YL7KA+ASt4yOrEA==
+      accountName: lokistorageganesh
+      accountKey: 0fjAqnmiDwy3WQDEzmr8n/InYOM3zIiANAn6EXCb8bUSlEzWuS2rbnnI4uQLR0IAkjggrlwb9d+p+AStHlH4GA==
       
 
   commonConfig:

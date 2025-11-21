@@ -1,13 +1,25 @@
-grafana:
-  dashboards:
-    loki-mixin:
-      operations:
-        file: custom-values/loki-mixin-dashboards/operations.json
-      reads:
-        file: custom-values/loki-mixin-dashboards/reads.json
-      writes:
-        file: custom-values/loki-mixin-dashboards/writes.json
-      retention:
-        file: custom-values/loki-mixin-dashboards/retention.json
-      usage:
-        file: custom-values/loki-mixin-dashboards/usage.json
+# grafana:
+#   sidecar:
+#     dashboards:
+#       enabled: true
+#       label: grafana_dashboard
+#       folder: "Loki Mixin"
+#       searchNamespace: ALL
+
+#   dashboards:
+#     loki-mixin:
+#       operations:
+#         json: |
+#           {{- $.Files.Get "custom-values/loki-mixin-dashboards/operations.json" | nindent 10 }}
+#       reads:
+#         json: |
+#           {{- $.Files.Get "custom-values/loki-mixin-dashboards/reads.json" | nindent 10 }}
+#       writes:
+#         json: |
+#           {{- $.Files.Get "custom-values/loki-mixin-dashboards/writes.json" | nindent 10 }}
+#       retention:
+#         json: |
+#           {{- $.Files.Get "custom-values/loki-mixin-dashboards/retention.json" | nindent 10 }}
+#       usage:
+#         json: |
+#           {{- $.Files.Get "custom-values/loki-mixin-dashboards/usage.json" | nindent 10 }}
