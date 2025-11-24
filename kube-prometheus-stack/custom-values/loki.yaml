@@ -1,10 +1,25 @@
+# custom-values/loki.yaml
+# -----------------------
+# Distributed Loki using Azure object store (blob) + PVCs for local TSDB/working dirs.
+#
+# Customize:
+#  - storageClassName: your cluster's storage class (e.g. managed-premium, default, thin, etc.)
+#  - sizes & accountKey
+# -----------------------
+
+# Set storage class used for PVCs in this cluster
+storageClassName: "default"    # <- change to your cluster's storageClass
+
 loki:
+  mode: distributed
   auth_enabled: false
 
   server:
     http_listen_port: 3100
 
-  # ---- STORAGE (your Azure config) ----
+  # ---------------------------------------------------
+  # AZURE BLOB STORAGE (OBJECT STORE) - REQUIRED
+  # ---------------------------------------------------
   storage:
     type: azure
     bucketNames:
@@ -13,7 +28,7 @@ loki:
       admin: loki-admin
     azure:
       accountName: lokistorageganesh
-      accountKey: 6UHovZmb7irh74fhZvjJhIg7e3rd4ZxolTsE3cs4grQ2CnJFlcVycLQADBSRvqZiHNOYE8Iw+Gdc+ASta2Mpyg==
+      accountKey: KmO3Qi7FSHVK4hLXleccZ79rBPTaWbaUrgeeNLwIbYjE0piSD7ql7+DmSh14Kax1xwrVqzYxT6S9+AStoofrPQ==
 
   commonConfig:
     replication_factor: 1
@@ -28,33 +43,103 @@ loki:
           prefix: loki_index_
           period: 24h
 
-# ---------------------------------------
-# ✔ PROMETHEUS INTEGRATION
-# ---------------------------------------
+# ---------------------------------------------------
+# MONITORING / SERVICE MONITORS - make Prometheus discover all components
+# ---------------------------------------------------
 monitoring:
   dashboards:
-    enabled: false   # You use custom dashboards
+    enabled: true
   rules:
-    enabled: true    # <--- IMPORTANT for Loki self monitoring!
-    alerting: false
+    enabled: true
   serviceMonitor:
     enabled: true
     labels:
-      release: kube-prometheus-stack   # REQUIRED for Prometheus discovery
+      release: kube-prometheus-stack
 
-# ---------------------------------------
-# ✔ LOKI SELF-MONITORING ENABLED
-# ---------------------------------------
-selfMonitoring:
+# Also enable per-component serviceMonitors (labels required so kube-prom discovers them)
+distributor:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+ingester:
+  # ingesters store chunks locally (TSDB) before upload, so give them a PVC
+  persistence:
+    enabled: true
+    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    accessModes:
+      - ReadWriteOnce
+    size: 20Gi
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+querier:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+queryFrontend:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+queryScheduler:
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+compactor:
+  # compactor needs a working dir and may use local FS for intermediate steps
+  persistence:
+    enabled: true
+    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+indexGateway:
+  # index-gateway typically doesn't require large PVCs, but provide small disk for safety
+  persistence:
+    enabled: true
+    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+ruler:
+  persistence:
+    enabled: true
+    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    accessModes:
+      - ReadWriteOnce
+    size: 5Gi
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack
+
+# Expose metrics endpoints via ServiceMonitor/Ports (chart uses these)
+serviceMonitor:
   enabled: true
-  grafanaAgent:
-    installOperator: false
-  podLogs:
-    enabled: false
+  additionalEndpoints:
+    - port: http-metrics
+      path: /metrics
 
-# ---------------------------------------
-# ✔ GATEWAY (LoadBalancer)
-# ---------------------------------------
+# Gateway (public access)
 gateway:
   enabled: true
   service:
