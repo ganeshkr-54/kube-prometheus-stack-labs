@@ -12,8 +12,7 @@ loki:
       admin: loki-admin
     azure:
       accountName: lokistorageganesh
-      accountKey: 0fjAqnmiDwy3WQDEzmr8n/InYOM3zIiANAn6EXCb8bUSlEzWuS2rbnnI4uQLR0IAkjggrlwb9d+p+AStHlH4GA==
-      
+      accountKey: 6UHovZmb7irh74fhZvjJhIg7e3rd4ZxolTsE3cs4grQ2CnJFlcVycLQADBSRvqZiHNOYE8Iw+Gdc+ASta2Mpyg==
 
   commonConfig:
     replication_factor: 1
@@ -27,6 +26,21 @@ loki:
         index:
           prefix: loki_index_
           period: 24h
+
+# ✔️ Enable Prometheus monitoring for Loki
+monitoring:
+  dashboards:
+    enabled: false
+  rules:
+    enabled: false
+
+  # ✔️ This creates ServiceMonitor so Prometheus can scrape Loki
+  serviceMonitor:
+    enabled: true
+    labels:
+      release: kube-prometheus-stack   # VERY IMPORTANT
+    interval: 30s
+    scrapeTimeout: 10s
 
 gateway:
   enabled: true
