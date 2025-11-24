@@ -4,6 +4,7 @@ loki:
   server:
     http_listen_port: 3100
 
+  # ---- STORAGE (your Azure config) ----
   storage:
     type: azure
     bucketNames:
@@ -27,21 +28,33 @@ loki:
           prefix: loki_index_
           period: 24h
 
-# ✔️ Enable Prometheus monitoring for Loki
+# ---------------------------------------
+# ✔ PROMETHEUS INTEGRATION
+# ---------------------------------------
 monitoring:
   dashboards:
-    enabled: false
+    enabled: false   # You use custom dashboards
   rules:
-    enabled: false
-
-  # ✔️ This creates ServiceMonitor so Prometheus can scrape Loki
+    enabled: true    # <--- IMPORTANT for Loki self monitoring!
+    alerting: false
   serviceMonitor:
     enabled: true
     labels:
-      release: kube-prometheus-stack   # VERY IMPORTANT
-    interval: 30s
-    scrapeTimeout: 10s
+      release: kube-prometheus-stack   # REQUIRED for Prometheus discovery
 
+# ---------------------------------------
+# ✔ LOKI SELF-MONITORING ENABLED
+# ---------------------------------------
+selfMonitoring:
+  enabled: true
+  grafanaAgent:
+    installOperator: false
+  podLogs:
+    enabled: false
+
+# ---------------------------------------
+# ✔ GATEWAY (LoadBalancer)
+# ---------------------------------------
 gateway:
   enabled: true
   service:
