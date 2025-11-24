@@ -147,32 +147,42 @@ grafana:
             ]
           }
 
-
-    ###########################
+      ###########################
     # LOKI MIXIN DASHBOARDS  #
     ###########################
     loki-mixin:
-      operations:
-        folder: "Loki Mixin"
-        json: |
-          {{ .Files.Get "loki-mixin-dashboards/operations.json" }}
 
-      reads:
+      loki-operational:
         folder: "Loki Mixin"
         json: |
-          {{ .Files.Get "loki-mixin-dashboards/reads.json" }}
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-operational.json" }}
 
-      writes:
+      loki-reads:
         folder: "Loki Mixin"
         json: |
-          {{ .Files.Get "loki-mixin-dashboards/writes.json" }}
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-reads.json" }}
 
-      retention:
+      loki-writes:
         folder: "Loki Mixin"
         json: |
-          {{ .Files.Get "loki-mixin-dashboards/retention.json" }}
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-writes.json" }}
 
-      usage:
+      loki-retention:
         folder: "Loki Mixin"
         json: |
-          {{ .Files.Get "loki-mixin-dashboards/usage.json" }}
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-retention.json" }}
+
+      loki-logs:
+        folder: "Loki Mixin"
+        json: |
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-logs.json" }}
+
+      loki-deletion:
+        folder: "Loki Mixin"
+        json: |
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-deletion.json" }}
+
+      loki-chunks:
+        folder: "Loki Mixin"
+        json: |
+          {{ .Files.Get "custom-values/loki-mixin-dashboards/loki-chunks.json" }}
