@@ -172,17 +172,30 @@ grafana:
     # LOKI MIXIN DASHBOARDS
     ################################
     loki-mixin:
-
       loki-operational:
-        url: https://github.com/grafana/loki/blob/main/production/loki-mixin-compiled/dashboards/loki-operational.json
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-operational.json
 
       loki-reads:
-        url: https://github.com/grafana/loki/blob/main/production/loki-mixin-compiled/dashboards/loki-reads.json
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-reads.json
 
       loki-writes:
-        url: https://github.com/grafana/loki/blob/main/production/loki-mixin-compiled/dashboards/loki-writes.json
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-writes.json
 
       loki-retention:
-        url: https://github.com/grafana/loki/blob/main/production/loki-mixin-compiled/dashboards/loki-retention.json
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-retention.json
 
-      
+      loki-logs:
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-logs.json
+
+      loki-deletion:
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-deletion.json
+
+      loki-chunks:
+        folder: "Loki Mixin"
+        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-chunks.json
