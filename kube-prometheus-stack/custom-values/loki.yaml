@@ -1,152 +1,65 @@
-# custom-values/loki.yaml
-# -----------------------
-# Distributed Loki using Azure object store (blob) + PVCs for local TSDB/working dirs.
-#
-# Customize:
-#  - storageClassName: your cluster's storage class (e.g. managed-premium, default, thin, etc.)
-#  - sizes & accountKey
-# -----------------------
-
-# Set storage class used for PVCs in this cluster
-storageClassName: ganesh    # <- change to your cluster's storageClass
-
 loki:
-  mode: distributed
   auth_enabled: false
 
   server:
     http_listen_port: 3100
 
-  # ---------------------------------------------------
-  # AZURE BLOB STORAGE (OBJECT STORE) - REQUIRED
-  # ---------------------------------------------------
-  storage:
-    type: azure
-    bucketNames:
-      chunks: loki-chunks
-      ruler: loki-ruler
-      admin: loki-admin
-    azure:
-      accountName: lokistorageganesh
-      accountKey: "REPLACE_WITH_YOUR_AZURE_ACCOUNT_KEY"
-
   commonConfig:
     replication_factor: 1
+
+  storage:
+    type: azure
+    azure:
+      account_name: lokistorageganesh
+      account_key: 
+      container_name: "loki"
+      use_managed_identity: false
 
   schemaConfig:
     configs:
       - from: "2024-01-01"
-        store: tsdb
+        store: boltdb-shipper
         object_store: azure
         schema: v13
         index:
           prefix: loki_index_
           period: 24h
 
-# ---------------------------------------------------
-# MONITORING / SERVICE MONITORS - make Prometheus discover all components
-# ---------------------------------------------------
+  compactor:
+    shared_store: azure
+
+  limits_config:
+    ingestion_rate_mb: 4
+    ingestion_burst_size_mb: 6
+    max_cache_freshness_per_query: 10m
+
+  ruler:
+    enable_api: true
+    storage:
+      type: azure
+    alertmanager_url: http://kube-prometheus-stack-alertmanager.monitoring:9093
+
+singleBinary:
+  replicas: 1
+  persistence:
+    enabled: true
+    storageClass: "ganesh"
+    size: 10Gi
+
+securityContext:
+  fsGroup: 10001
+  runAsNonRoot: true
+  runAsUser: 10001
+
+service:
+  type: ClusterIP
+
 monitoring:
   dashboards:
-    enabled: true
+    enabled: false
   rules:
-    enabled: true
+    enabled: false
   serviceMonitor:
     enabled: true
     labels:
       release: kube-prometheus-stack
-
-# Also enable per-component serviceMonitors (labels required so kube-prom discovers them)
-distributor:
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-ingester:
-  # ingesters store chunks locally (TSDB) before upload, so give them a PVC
-  persistence:
-    enabled: true
-    storageClassName: ganesh
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-querier:
-  persistence:
-    enabled: true
-    storageClassName: ganesh
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-queryFrontend:
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-queryScheduler:
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-compactor:
-  # compactor needs a working dir and may use local FS for intermediate steps
-  persistence:
-    enabled: true
-    storageClassName: ganesh
-    accessModes:
-      - ReadWriteOnce
-    size: 10Gi
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-indexGateway:
-  # index-gateway typically doesn't require large PVCs, but provide small disk for safety
-  persistence:
-    enabled: true
-    storageClassName: ganesh
-    accessModes:
-      - ReadWriteOnce
-    size: 5Gi
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-ruler:
-  persistence:
-    enabled: true
-    storageClassName: ganesh
-    accessModes:
-      - ReadWriteOnce
-    size: 5Gi
-  serviceMonitor:
-    enabled: true
-    labels:
-      release: kube-prometheus-stack
-
-# Expose metrics endpoints via ServiceMonitor/Ports (chart uses these)
-serviceMonitor:
-  enabled: true
-  additionalEndpoints:
-    - port: http-metrics
-      path: /metrics
-
-# Gateway (public access)
-gateway:
-  enabled: true
-  service:
-    type: LoadBalancer
