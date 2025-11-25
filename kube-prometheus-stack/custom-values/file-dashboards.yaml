@@ -1,6 +1,6 @@
 grafana:
   dashboardProviders:
-    dashboards.yaml:
+    dashboardproviders.yaml:
       apiVersion: 1
       providers:
         - name: "dotdc"
@@ -12,9 +12,6 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/dotdc
 
-    dashboardproviders.yaml:
-      apiVersion: 1
-      providers:
         - name: "kubernetes-logs"
           orgId: 1
           folder: "Kubernetes Logs"
@@ -24,20 +21,20 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/kubernetes-logs
 
-        - name: "loki-mixin"
+        - name: "advanced-logs"
           orgId: 1
-          folder: "Loki Mixin"
+          folder: "Advanced Kubernetes Logs"
           type: file
           disableDeletion: false
           editable: true
           options:
-            path: /var/lib/grafana/dashboards/loki-mixin
+            path: /var/lib/grafana/dashboards/advanced-logs
 
   dashboards:
 
-    ##############################
-    # DOTDC KUBERNETES DASHBOARDS
-    ##############################
+    ########################################
+    # DOTDC KUBERNETES METRIC DASHBOARDS
+    ########################################
     dotdc:
       api-server:
         url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-system-api-server.json
@@ -52,9 +49,9 @@ grafana:
       pods:
         url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-pods.json
 
-    ################################
-    # KUBERNETES LOGS (RAW JSON)
-    ################################
+    ##################################################
+    # BASIC KUBERNETES LOGS DASHBOARD (Your Existing)
+    ##################################################
     kubernetes-logs:
       k8s-logs-dashboard:
         folder: "Kubernetes Logs"
@@ -108,12 +105,7 @@ grafana:
                     "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}",
                     "refId": "A"
                   }
-                ],
-                "options": {
-                  "wrapLogMessage": true,
-                  "showTime": true,
-                  "showLabels": true
-                }
+                ]
               },
               {
                 "type": "timeseries",
@@ -168,34 +160,162 @@ grafana:
             ]
           }
 
-    ################################
-    # LOKI MIXIN DASHBOARDS
-    ################################
-    loki-mixin:
-      loki-operational:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-operational.json
+    ##########################################################
+    # ADVANCED KUBERNETES LOGS DASHBOARD (JSON STRUCTURED)
+    ##########################################################
+    advanced-logs:
+      advanced-k8s-logs-dashboard:
+        folder: "Advanced Kubernetes Logs"
+        json: |
+          {
+            "uid": "advanced-k8s-logs",
+            "title": "Kubernetes / Advanced Log Analytics (Loki)",
+            "tags": ["kubernetes", "logs", "advanced", "loki"],
+            "schemaVersion": 38,
+            "version": 1,
+            "refresh": "10s",
 
-      loki-reads:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-reads.json
+            "templating": {
+              "list": [
+                {
+                  "name": "namespace",
+                  "type": "query",
+                  "label": "Namespace",
+                  "datasource": { "uid": "Loki", "type": "loki" },
+                  "query": "label_values(namespace)",
+                  "includeAll": true,
+                  "multi": true
+                },
+                {
+                  "name": "pod",
+                  "type": "query",
+                  "label": "Pod",
+                  "datasource": { "uid": "Loki", "type": "loki" },
+                  "query": "label_values({namespace=~\"$namespace\"}, pod)",
+                  "includeAll": true,
+                  "multi": true
+                },
+                {
+                  "name": "container",
+                  "type": "query",
+                  "label": "Container",
+                  "datasource": { "uid": "Loki", "type": "loki" },
+                  "query": "label_values({namespace=~\"$namespace\", pod=~\"$pod\"}, container)",
+                  "includeAll": true,
+                  "multi": true
+                }
+              ]
+            },
 
-      loki-writes:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-writes.json
+            "panels": [
 
-      loki-retention:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-retention.json
+              {
+                "type": "logs",
+                "title": "Live Logs (Parsed JSON)",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
+                "targets": [
+                  {
+                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} | json",
+                    "refId": "A"
+                  }
+                ]
+              },
 
-      loki-logs:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-logs.json
+              {
+                "type": "timeseries",
+                "title": "Error Rate (JSON: level=error)",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
+                "targets": [
+                  {
+                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | level=\"error\" [5m])) by (namespace)",
+                    "legendFormat": "{{namespace}}",
+                    "refId": "A"
+                  }
+                ]
+              },
 
-      loki-deletion:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-deletion.json
+              {
+                "type": "timeseries",
+                "title": "Warning Rate",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
+                "targets": [
+                  {
+                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | level=\"warn\" [5m])) by (namespace)",
+                    "legendFormat": "{{namespace}}",
+                    "refId": "A"
+                  }
+                ]
+              },
 
-      loki-chunks:
-        folder: "Loki Mixin"
-        url: https://raw.githubusercontent.com/grafana/loki/main/production/loki-mixin-compiled/dashboards/loki-chunks.json
+              {
+                "type": "table",
+                "title": "Top Error Messages (JSON msg field)",
+                "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "targets": [
+                  {
+                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\"} | json | level=\"error\" | msg [5m])) by (msg))",
+                    "refId": "A"
+                  }
+                ]
+              },
+
+              {
+                "type": "timeseries",
+                "title": "HTTP 5xx Error Rate",
+                "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "targets": [
+                  {
+                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | status>=500 [5m])) by (pod)",
+                    "refId": "A",
+                    "legendFormat": "{{pod}}"
+                  }
+                ]
+              },
+
+              {
+                "type": "timeseries",
+                "title": "HTTP Slow Requests (>1s)",
+                "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "targets": [
+                  {
+                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | latency_ms>1000 [5m])) by (pod)",
+                    "refId": "A",
+                    "legendFormat": "{{pod}}"
+                  }
+                ]
+              },
+
+              {
+                "type": "logs",
+                "title": "CrashLoop / Back-off Detection",
+                "gridPos": { "x": 0, "y": 34, "w": 24, "h": 8 },
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "targets": [
+                  {
+                    "expr": "{namespace=~\"$namespace\"} |= \"CrashLoopBackOff\" OR |= \"Back-off\"",
+                    "refId": "A"
+                  }
+                ]
+              },
+
+              {
+                "type": "table",
+                "title": "Top Noisy Pods (Log Volume Rank)",
+                "gridPos": { "x": 0, "y": 42, "w": 24, "h": 8 },
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "targets": [
+                  {
+                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\"}[1m])) by (pod))",
+                    "refId": "A"
+                  }
+                ]
+              }
+
+            ]
+          }
