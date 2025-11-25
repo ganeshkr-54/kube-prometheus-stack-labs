@@ -8,7 +8,7 @@
 # -----------------------
 
 # Set storage class used for PVCs in this cluster
-storageClassName: "default"    # <- change to your cluster's storageClass
+storageClassName: ganesh    # <- change to your cluster's storageClass
 
 loki:
   mode: distributed
@@ -28,7 +28,7 @@ loki:
       admin: loki-admin
     azure:
       accountName: lokistorageganesh
-      accountKey: KmO3Qi7FSHVK4hLXleccZ79rBPTaWbaUrgeeNLwIbYjE0piSD7ql7+DmSh14Kax1xwrVqzYxT6S9+AStoofrPQ==
+      accountKey: "REPLACE_WITH_YOUR_AZURE_ACCOUNT_KEY"
 
   commonConfig:
     replication_factor: 1
@@ -67,16 +67,22 @@ ingester:
   # ingesters store chunks locally (TSDB) before upload, so give them a PVC
   persistence:
     enabled: true
-    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    storageClassName: ganesh
     accessModes:
       - ReadWriteOnce
-    size: 20Gi
+    size: 10Gi
   serviceMonitor:
     enabled: true
     labels:
       release: kube-prometheus-stack
 
 querier:
+  persistence:
+    enabled: true
+    storageClassName: ganesh
+    accessModes:
+      - ReadWriteOnce
+    size: 10Gi
   serviceMonitor:
     enabled: true
     labels:
@@ -98,7 +104,7 @@ compactor:
   # compactor needs a working dir and may use local FS for intermediate steps
   persistence:
     enabled: true
-    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    storageClassName: ganesh
     accessModes:
       - ReadWriteOnce
     size: 10Gi
@@ -111,7 +117,7 @@ indexGateway:
   # index-gateway typically doesn't require large PVCs, but provide small disk for safety
   persistence:
     enabled: true
-    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    storageClassName: ganesh
     accessModes:
       - ReadWriteOnce
     size: 5Gi
@@ -123,7 +129,7 @@ indexGateway:
 ruler:
   persistence:
     enabled: true
-    storageClassName: "{{ .Values.storageClassName | default \"default\" }}"
+    storageClassName: ganesh
     accessModes:
       - ReadWriteOnce
     size: 5Gi
