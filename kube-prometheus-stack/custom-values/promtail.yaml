@@ -1,29 +1,47 @@
 config:
-  clients:
-    - url: http://loki-gateway.monitoring.svc.cluster.local/loki/api/v1/push
+  server:
+    http_listen_port: 3101
+    grpc_listen_port: 0
 
   positions:
     filename: /run/promtail/positions.yaml
 
+  clients:
+    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+
   snippets:
     pipelineStages:
-      - docker: {}        # handles CRI format
-      - json:             # parses microservice JSON logs
+      - docker: {}        # Parse CRI log format
+      - json:             # Parse microservices JSON fields
           expressions:
             severity: severity
-            msg: message
+            message: message
             service: serviceContext.service
             trace_id: traceId
-      - labels:           # turn fields into labels for LogQL
+      - labels:           # Convert parsed fields into LogQL labels
           severity:
           service:
           trace_id:
 
+# Run Promtail as DaemonSet on each node
 daemonset:
   enabled: true
 
 serviceMonitor:
   enabled: true
+
+pipelineStages:
+  - docker: {}
+  - json:
+      expressions:
+        severity: severity
+        message: message
+        service: serviceContext.service
+        trace_id: traceId
+  - labels:
+      severity:
+      service:
+      trace_id:
 
 extraScrapeConfigs:
   - job_name: kubernetes-pods
@@ -34,15 +52,29 @@ extraScrapeConfigs:
       - json:
           expressions:
             severity: severity
-            msg: message
+            message: message
             service: serviceContext.service
             trace_id: traceId
       - labels:
           severity:
           service:
           trace_id:
+
     relabel_configs:
-      - source_labels: [ __meta_kubernetes_pod_label_app ]
-        target_label: app
-      - source_labels: [ __meta_kubernetes_namespace ]
+      # Only scrape running containers with /var/log/pods path
+      - source_labels: [__meta_kubernetes_pod_container_name]
+        target_label: container
+
+      - source_labels: [__meta_kubernetes_namespace]
         target_label: namespace
+
+      - source_labels: [__meta_kubernetes_pod_name]
+        target_label: pod
+
+      - source_labels: [__meta_kubernetes_pod_label_app]
+        target_label: app
+
+      # Path to log file inside node
+      - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+        target_label: __path__
+        replacement: /var/log/pods/*$1/*/*.log
