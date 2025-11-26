@@ -4,7 +4,7 @@ grafana:
       type: loki
       access: proxy
       uid: Loki
-      url: http://loki-monitoring.monitoring.svc.cluster.local
+      url: http://loki-monitoring.monitoring.svc.cluster.local:3100
       jsonData:
         maxLines: 5000
       isDefault: false
