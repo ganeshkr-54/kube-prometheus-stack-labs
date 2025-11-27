@@ -1,80 +1,92 @@
-config:
-  server:
-    http_listen_port: 3101
-    grpc_listen_port: 0
+promtail:
+  config:
+    server:
+      http_listen_port: 3101
+      grpc_listen_port: 0
 
-  positions:
-    filename: /run/promtail/positions.yaml
+    positions:
+      filename: /run/promtail/positions.yaml
 
-  clients:
-    - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
+    clients:
+      - url: http://loki.monitoring.svc.cluster.local:3100/loki/api/v1/push
 
-  snippets:
-    pipelineStages:
-      - docker: {}        # Parse CRI log format
-      - json:             # Parse microservices JSON fields
-          expressions:
-            severity: severity
-            message: message
-            service: serviceContext.service
-            trace_id: traceId
-      - labels:           # Convert parsed fields into LogQL labels
-          severity:
-          service:
-          trace_id:
+    snippets:
+      pipelineStages:
+        # Stage 1: Parse Docker/CRI log wrappers
+        - docker: {}
 
-# Run Promtail as DaemonSet on each node
-daemonset:
-  enabled: true
+        # Stage 2: Try JSON parsing only if log is JSON
+        - match:
+            selector: '{app=~".+"}'
+            stages:
+              - json:
+                  expressions:
+                    level: level
+                    msg: msg
+                    err: err.message
+                    status: statusCode
+                    time: time
+            # Ignore errors if log is not JSON
+            drop_if: false
 
-serviceMonitor:
-  enabled: true
+        # Stage 3: Parse Java / Kafka / non-JSON logs with regex
+        - regex:
+            expression: '^(?P<ts>\S+)\s+(?P<level>INFO|WARN|ERROR|DEBUG)\s+\[(?P<class>[^\]]+)\].*?(?P<message>.*)$'
 
-pipelineStages:
-  - docker: {}
-  - json:
-      expressions:
-        severity: severity
-        message: message
-        service: serviceContext.service
-        trace_id: traceId
-  - labels:
-      severity:
-      service:
-      trace_id:
+        # Stage 4: Normalise and label severity
+        - labels:
+            level:
+            class:
+            message:
+            app:
+            namespace:
+            pod:
+            container:
 
-extraScrapeConfigs:
-  - job_name: kubernetes-pods
-    kubernetes_sd_configs:
-      - role: pod
-    pipeline_stages:
-      - docker: {}
-      - json:
-          expressions:
-            severity: severity
-            message: message
-            service: serviceContext.service
-            trace_id: traceId
-      - labels:
-          severity:
-          service:
-          trace_id:
+  daemonset:
+    enabled: true
 
-    relabel_configs:
-      # Only scrape running containers with /var/log/pods path
-      - source_labels: [__meta_kubernetes_pod_container_name]
-        target_label: container
+  serviceMonitor:
+    enabled: true
 
-      - source_labels: [__meta_kubernetes_namespace]
-        target_label: namespace
+  extraScrapeConfigs:
+    - job_name: kubernetes-pods
+      kubernetes_sd_configs:
+        - role: pod
 
-      - source_labels: [__meta_kubernetes_pod_name]
-        target_label: pod
+      pipeline_stages:
+        - docker: {}
 
-      - source_labels: [__meta_kubernetes_pod_label_app]
-        target_label: app
+        # JSON detection
+        - match:
+            selector: '{app=~".+"}'
+            stages:
+              - json:
+                  expressions:
+                    level: level
+                    msg: msg
+                    err: err.message
+                    status: statusCode
+            drop_if: false
 
-      # Path to log file inside node
-      - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
-        target_label: __path__
-        replacement: /var/log/pods/*$1/*/*.log
+        # Java/Kafka logs
+        - regex:
+            expression: '^(?P<ts>\S+)\s+(?P<level>INFO|WARN|ERROR|DEBUG)\s+\[(?P<class>[^\]]+)\].*?(?P<message>.*)$'
+
+        - labels:
+            level:
+            class:
+            message:
+
+      relabel_configs:
+        - source_labels: [__meta_kubernetes_namespace]
+          target_label: namespace
+        - source_labels: [__meta_kubernetes_pod_name]
+          target_label: pod
+        - source_labels: [__meta_kubernetes_pod_container_name]
+          target_label: container
+        - source_labels: [__meta_kubernetes_pod_label_app]
+          target_label: app
+        - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
+          target_label: __path__
+          replacement: /var/log/pods/*$1/*/*.log
