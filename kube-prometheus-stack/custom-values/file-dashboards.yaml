@@ -30,6 +30,17 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/advanced-logs
 
+        - name: "microservices-logs"
+          orgId: 1
+          folder: "Microservices Errors"
+          type: file
+          disableDeletion: false
+          editable: true
+          options:
+            path: /var/lib/grafana/dashboards/microservices-logs
+
+
+  
   dashboards:
 
     ########################################
@@ -50,7 +61,7 @@ grafana:
         url: https://raw.githubusercontent.com/dotdc/grafana-dashboards-kubernetes/master/dashboards/k8s-views-pods.json
 
     ##################################################
-    # BASIC KUBERNETES LOGS DASHBOARD (Your Existing)
+    # BASIC KUBERNETES LOGS DASHBOARD (UPDATED)
     ##################################################
     kubernetes-logs:
       k8s-logs-dashboard:
@@ -60,7 +71,7 @@ grafana:
             "uid": "k8s-logs-overview",
             "title": "Kubernetes / Logs Overview (Loki)",
             "schemaVersion": 38,
-            "version": 1,
+            "version": 2,
             "refresh": "10s",
             "tags": ["kubernetes", "logs", "loki"],
             "templating": {
@@ -127,7 +138,7 @@ grafana:
                 "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\"} |= \"error\" [5m])) by (namespace)",
+                    "expr": "sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (namespace)",
                     "legendFormat": "{{namespace}} errors/s",
                     "refId": "A"
                   }
@@ -140,7 +151,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
                 "targets": [
                   {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\"} |= \"error\" | json | msg [5m])) by (msg))",
+                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (msg))",
                     "refId": "A"
                   }
                 ]
@@ -152,7 +163,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 26, "w": 24, "h": 10 },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} |= \"error\"",
+                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} |~ \"ERROR|Error|Exception|MongoServerSelectionError|Unauthorized|Missing token\"",
                     "refId": "A"
                   }
                 ]
@@ -161,7 +172,7 @@ grafana:
           }
 
     ##########################################################
-    # ADVANCED KUBERNETES LOGS DASHBOARD (JSON STRUCTURED)
+    # ADVANCED KUBERNETES LOGS DASHBOARD (UPDATED)
     ##########################################################
     advanced-logs:
       advanced-k8s-logs-dashboard:
@@ -172,9 +183,8 @@ grafana:
             "title": "Kubernetes / Advanced Log Analytics (Loki)",
             "tags": ["kubernetes", "logs", "advanced", "loki"],
             "schemaVersion": 38,
-            "version": 1,
+            "version": 2,
             "refresh": "10s",
-
             "templating": {
               "list": [
                 {
@@ -206,36 +216,32 @@ grafana:
                 }
               ]
             },
-
             "panels": [
-
               {
                 "type": "logs",
-                "title": "Live Logs (Parsed JSON)",
+                "title": "Live Logs (Parsed where JSON)",
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} | json",
+                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}",
                     "refId": "A"
                   }
                 ]
               },
-
               {
                 "type": "timeseries",
-                "title": "Error Rate (JSON: level=error)",
+                "title": "Error Rate (level=ERROR / error)",
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | level=\"error\" [5m])) by (namespace)",
+                    "expr": "sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (namespace)",
                     "legendFormat": "{{namespace}}",
                     "refId": "A"
                   }
                 ]
               },
-
               {
                 "type": "timeseries",
                 "title": "Warning Rate",
@@ -243,71 +249,53 @@ grafana:
                 "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | level=\"warn\" [5m])) by (namespace)",
+                    "expr": "sum(rate({namespace=~\"$namespace\", level=~\"WARN|warning\"}[5m])) by (namespace)",
                     "legendFormat": "{{namespace}}",
                     "refId": "A"
                   }
                 ]
               },
-
               {
                 "type": "table",
-                "title": "Top Error Messages (JSON msg field)",
+                "title": "Top Error Messages (msg label)",
                 "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\"} | json | level=\"error\" | msg [5m])) by (msg))",
+                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (msg))",
                     "refId": "A"
                   }
                 ]
               },
-
               {
                 "type": "timeseries",
-                "title": "HTTP 5xx Error Rate",
+                "title": "HTTP 5xx Error Rate (status label)",
                 "gridPos": { "x": 0, "y": 26, "w": 12, "h": 8 },
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | status>=500 [5m])) by (pod)",
+                    "expr": "sum(rate({namespace=~\"$namespace\", status=~\"5..\"}[5m])) by (pod)",
                     "refId": "A",
                     "legendFormat": "{{pod}}"
                   }
                 ]
               },
-
               {
-                "type": "timeseries",
-                "title": "HTTP Slow Requests (>1s)",
+                "type": "logs",
+                "title": "CrashLoop / Back-off Detection",
                 "gridPos": { "x": 12, "y": 26, "w": 12, "h": 8 },
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\"} | json | latency_ms>1000 [5m])) by (pod)",
-                    "refId": "A",
-                    "legendFormat": "{{pod}}"
-                  }
-                ]
-              },
-
-              {
-                "type": "logs",
-                "title": "CrashLoop / Back-off Detection",
-                "gridPos": { "x": 0, "y": 34, "w": 24, "h": 8 },
-                "datasource": { "uid": "Loki", "type": "loki" },
-                "targets": [
-                  {
-                    "expr": "{namespace=~\"$namespace\"} |= \"CrashLoopBackOff\" OR |= \"Back-off\"",
+                    "expr": "{namespace=~\"$namespace\"} |~ \"CrashLoopBackOff|Back-off\"",
                     "refId": "A"
                   }
                 ]
               },
-
               {
                 "type": "table",
                 "title": "Top Noisy Pods (Log Volume Rank)",
-                "gridPos": { "x": 0, "y": 42, "w": 24, "h": 8 },
+                "gridPos": { "x": 0, "y": 34, "w": 24, "h": 8 },
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
@@ -316,6 +304,102 @@ grafana:
                   }
                 ]
               }
+            ]
+          }
 
+    ##########################################################
+    # MICROSERVICES ERROR EXPLORER DASHBOARD
+    ##########################################################
+    microservices-logs:
+      microservices-errors-dashboard:
+        folder: "Microservices Errors"
+        json: |
+          {
+            "uid": "svc-error-explorer",
+            "title": "Microservices Error Explorer (Loki)",
+            "tags": ["microservices", "errors", "loki"],
+            "schemaVersion": 38,
+            "version": 1,
+            "refresh": "10s",
+            "templating": {
+              "list": [
+                {
+                  "name": "namespace",
+                  "type": "query",
+                  "label": "Namespace",
+                  "datasource": { "uid": "Loki", "type": "loki" },
+                  "query": "label_values(namespace)",
+                  "includeAll": true,
+                  "multi": true
+                },
+                {
+                  "name": "service",
+                  "type": "query",
+                  "label": "Service",
+                  "datasource": { "uid": "Loki", "type": "loki" },
+                  "query": "label_values({namespace=~\"$namespace\"}, service)",
+                  "includeAll": true,
+                  "multi": true
+                },
+                {
+                  "name": "level",
+                  "type": "custom",
+                  "label": "Level",
+                  "query": "ERROR,error,WARN,warning,INFO,info",
+                  "includeAll": true,
+                  "multi": true
+                }
+              ]
+            },
+            "panels": [
+              {
+                "type": "timeseries",
+                "title": "Error Rate per Service",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+                "targets": [
+                  {
+                    "expr": "sum(rate({namespace=~\"$namespace\", service=~\"$service\", level=~\"ERROR|error\"}[5m])) by (service)",
+                    "refId": "A",
+                    "legendFormat": "{{service}}"
+                  }
+                ]
+              },
+              {
+                "type": "table",
+                "title": "Top Exception Types",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+                "targets": [
+                  {
+                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\", service=~\"$service\", level=~\"ERROR|error\"}[5m])) by (exception_type))",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "type": "table",
+                "title": "Top Error Messages by Service",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
+                "targets": [
+                  {
+                    "expr": "topk(20, sum(rate({namespace=~\"$namespace\", service=~\"$service\", level=~\"ERROR|error\"}[10m])) by (service, msg))",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "type": "logs",
+                "title": "Error Log Stream (Filtered by Service)",
+                "datasource": { "uid": "Loki", "type": "loki" },
+                "gridPos": { "x": 0, "y": 16, "w": 24, "h": 12 },
+                "targets": [
+                  {
+                    "expr": "{namespace=~\"$namespace\", service=~\"$service\"} |~ \"ERROR|Error|Exception|MongoServerSelectionError|Unauthorized|Missing token\"",
+                    "refId": "A"
+                  }
+                ]
+              }
             ]
           }
