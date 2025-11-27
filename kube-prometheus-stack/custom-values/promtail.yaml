@@ -1,4 +1,5 @@
 promtail:
+
   config:
     server:
       http_listen_port: 3101
@@ -12,36 +13,52 @@ promtail:
 
     snippets:
       pipelineStages:
-        # Stage 1: Parse Docker/CRI log wrappers
+        # 1. handle container runtime format
         - docker: {}
 
-        # Stage 2: Try JSON parsing only if log is JSON
-        - match:
-            selector: '{app=~".+"}'
-            stages:
-              - json:
-                  expressions:
-                    level: level
-                    msg: msg
-                    err: err.message
-                    status: statusCode
-                    time: time
-            # Ignore errors if log is not JSON
-            drop_if: false
+        # 2. Try JSON first
+        - json:
+            expressions:
+              level: level
+              msg: msg
+              service: service
+              error_message: err.message
+              exception_type: err.type
+              stack: err.stack
+              time: time
+              code: code
 
-        # Stage 3: Parse Java / Kafka / non-JSON logs with regex
+          # If JSON parsing succeeds → continue
+          action_on_success: next_stage
+
+        # 3. FALLBACK to REGEX parsing for JAVA logs
         - regex:
-            expression: '^(?P<ts>\S+)\s+(?P<level>INFO|WARN|ERROR|DEBUG)\s+\[(?P<class>[^\]]+)\].*?(?P<message>.*)$'
+            # Example Java format:
+            # 07:30:52 ERROR [co.oi.om.PositionProcessor] (...) message....
+            expression: '^(?P<ts>\S+)\s+(?P<level>[A-Z]+)\s+\[(?P<class>[^\]]+)\].*(?P<msg>.*)$'
 
-        # Stage 4: Normalise and label severity
+        # 4. Extract AIS vessel info where present
+        - regex:
+            expression: 'mmsi\":\"?(?P<mmsi>\d+)'
+          action_on_failure: continue
+
+        - regex:
+            expression: 'imo\":(?P<imo>\d+)'
+          action_on_failure: continue
+
+        - regex:
+            expression: 'callsign\":\"?(?P<callsign>[A-Z0-9]+)'
+          action_on_failure: continue
+
+        # 5. Common labels
         - labels:
             level:
             class:
-            message:
-            app:
-            namespace:
-            pod:
-            container:
+            service:
+            exception_type:
+            mmsi:
+            imo:
+            callsign:
 
   daemonset:
     enabled: true
@@ -56,27 +73,36 @@ promtail:
 
       pipeline_stages:
         - docker: {}
+        - json:
+            expressions:
+              level: level
+              msg: msg
+              service: service
+              error_message: err.message
+              exception_type: err.type
+              stack: err.stack
+              time: time
+              code: code
+          action_on_success: next_stage
 
-        # JSON detection
-        - match:
-            selector: '{app=~".+"}'
-            stages:
-              - json:
-                  expressions:
-                    level: level
-                    msg: msg
-                    err: err.message
-                    status: statusCode
-            drop_if: false
-
-        # Java/Kafka logs
         - regex:
-            expression: '^(?P<ts>\S+)\s+(?P<level>INFO|WARN|ERROR|DEBUG)\s+\[(?P<class>[^\]]+)\].*?(?P<message>.*)$'
+            expression: '^(?P<ts>\S+)\s+(?P<level>[A-Z]+)\s+\[(?P<class>[^\]]+)\].*(?P<msg>.*)$'
+
+        - regex:
+            expression: 'mmsi\":\"?(?P<mmsi>\d+)'
+        - regex:
+            expression: 'imo\":(?P<imo>\d+)'
+        - regex:
+            expression: 'callsign\":\"?(?P<callsign>[A-Z0-9]+)'
 
         - labels:
             level:
             class:
-            message:
+            service:
+            exception_type:
+            mmsi:
+            imo:
+            callsign:
 
       relabel_configs:
         - source_labels: [__meta_kubernetes_namespace]
@@ -87,6 +113,8 @@ promtail:
           target_label: container
         - source_labels: [__meta_kubernetes_pod_label_app]
           target_label: app
+
+        # Path to log file
         - source_labels: [__meta_kubernetes_pod_uid, __meta_kubernetes_pod_container_name]
           target_label: __path__
           replacement: /var/log/pods/*$1/*/*.log
