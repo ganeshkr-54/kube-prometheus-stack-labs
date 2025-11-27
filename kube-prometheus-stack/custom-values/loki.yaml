@@ -5,7 +5,7 @@ loki:
         - from: "2024-01-01"
           store: boltdb-shipper
           object_store: azure
-          schema: v11
+          schema: v13
           index:
             prefix: loki_index_
             period: 24h
@@ -13,7 +13,7 @@ loki:
     storage_config:
       azure:
         account_name: lokistorageganesh
-        account_key: O7HvlhjYcldzWnnvPLOI8zvCyJfZfv/C7S/F4LMK0AJt2335cfvqYjLvrz8VgVBXtVvMg5kaD+Rs+AStWQN/TA==
+        account_key: <your-key>
         container_name: loki
       boltdb_shipper:
         shared_store: azure
