@@ -27,6 +27,7 @@ promtail:
               stack: err.stack
               time: time
               code: code
+              context: context
 
           # If JSON parsing succeeds → continue
           action_on_success: next_stage
@@ -59,6 +60,8 @@ promtail:
             mmsi:
             imo:
             callsign:
+            msg:
+            context:
 
   daemonset:
     enabled: true
