@@ -39,7 +39,6 @@ grafana:
           options:
             path: /var/lib/grafana/dashboards/microservices-logs
 
-
   
   dashboards:
 
@@ -83,6 +82,7 @@ grafana:
                   "datasource": { "type": "loki", "uid": "Loki" },
                   "query": "label_values(namespace)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 },
                 {
@@ -92,6 +92,7 @@ grafana:
                   "datasource": { "type": "loki", "uid": "Loki" },
                   "query": "label_values({namespace=~\"$namespace\"}, pod)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 },
                 {
@@ -101,6 +102,7 @@ grafana:
                   "datasource": { "type": "loki", "uid": "Loki" },
                   "query": "label_values({namespace=~\"$namespace\", pod=~\"$pod\"}, container)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 }
               ]
@@ -113,7 +115,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}",
+                    "expr": "{namespace=~\".+\", pod=~\".+\", container=~\".+\"}",
                     "refId": "A"
                   }
                 ]
@@ -125,7 +127,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\"}[1m])) by (namespace)",
+                    "expr": "sum by (namespace) (count_over_time({namespace=~\".+\"}[1m]))",
                     "legendFormat": "{{namespace}}",
                     "refId": "A"
                   }
@@ -138,7 +140,7 @@ grafana:
                 "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (namespace)",
+                    "expr": "sum by (namespace) (count_over_time({level=~\"ERROR|error\"}[5m]))",
                     "legendFormat": "{{namespace}} errors/s",
                     "refId": "A"
                   }
@@ -151,7 +153,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 18, "w": 24, "h": 8 },
                 "targets": [
                   {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (msg))",
+                    "expr": "topk(10, sum by (msg) (count_over_time({level=~\"ERROR|error\"}[5m])))",
                     "refId": "A"
                   }
                 ]
@@ -163,7 +165,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 26, "w": 24, "h": 10 },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"} |~ \"ERROR|Error|Exception|MongoServerSelectionError|Unauthorized|Missing token\"",
+                    "expr": "{namespace=~\".+\", pod=~\".+\", container=~\".+\"} |~ \"ERROR|Error|Exception|MongoServerSelectionError|Unauthorized|Missing token\"",
                     "refId": "A"
                   }
                 ]
@@ -194,6 +196,7 @@ grafana:
                   "datasource": { "uid": "Loki", "type": "loki" },
                   "query": "label_values(namespace)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 },
                 {
@@ -203,6 +206,7 @@ grafana:
                   "datasource": { "uid": "Loki", "type": "loki" },
                   "query": "label_values({namespace=~\"$namespace\"}, pod)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 },
                 {
@@ -212,6 +216,7 @@ grafana:
                   "datasource": { "uid": "Loki", "type": "loki" },
                   "query": "label_values({namespace=~\"$namespace\", pod=~\"$pod\"}, container)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 }
               ]
@@ -224,7 +229,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 0, "w": 24, "h": 10 },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\", pod=~\"$pod\", container=~\"$container\"}",
+                    "expr": "{namespace=~\".+\", pod=~\".+\", container=~\".+\"}",
                     "refId": "A"
                   }
                 ]
@@ -236,7 +241,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (namespace)",
+                    "expr": "sum by (namespace) (count_over_time({level=~\"ERROR|error\"}[5m]))",
                     "legendFormat": "{{namespace}}",
                     "refId": "A"
                   }
@@ -249,7 +254,7 @@ grafana:
                 "gridPos": { "x": 12, "y": 10, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\", level=~\"WARN|warning\"}[5m])) by (namespace)",
+                    "expr": "sum by (namespace) (count_over_time({level=~\"WARN|warning\"}[5m]))",
                     "legendFormat": "{{namespace}}",
                     "refId": "A"
                   }
@@ -262,7 +267,7 @@ grafana:
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\", level=~\"ERROR|error\"}[5m])) by (msg))",
+                    "expr": "topk(10, sum by (msg) (count_over_time({level=~\"ERROR|error\"}[5m])))",
                     "refId": "A"
                   }
                 ]
@@ -274,7 +279,7 @@ grafana:
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\", status=~\"5..\"}[5m])) by (pod)",
+                    "expr": "sum by (pod) (count_over_time({status=~\"5..\"}[5m]))",
                     "refId": "A",
                     "legendFormat": "{{pod}}"
                   }
@@ -287,7 +292,7 @@ grafana:
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\"} |~ \"CrashLoopBackOff|Back-off\"",
+                    "expr": "{namespace=~\".+\"} |~ \"CrashLoopBackOff|Back-off\"",
                     "refId": "A"
                   }
                 ]
@@ -299,7 +304,7 @@ grafana:
                 "datasource": { "uid": "Loki", "type": "loki" },
                 "targets": [
                   {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\"}[1m])) by (pod))",
+                    "expr": "topk(10, sum by (pod) (rate({pod=~\".+\"}[5m])))",
                     "refId": "A"
                   }
                 ]
@@ -330,6 +335,7 @@ grafana:
                   "datasource": { "uid": "Loki", "type": "loki" },
                   "query": "label_values(namespace)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 },
                 {
@@ -339,6 +345,7 @@ grafana:
                   "datasource": { "uid": "Loki", "type": "loki" },
                   "query": "label_values({namespace=~\"$namespace\"}, service)",
                   "includeAll": true,
+                  "allValue": ".+",
                   "multi": true
                 },
                 {
@@ -359,7 +366,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "sum(rate({namespace=~\"$namespace\", service=~\"$service\", level=~\"ERROR|error\"}[5m])) by (service)",
+                    "expr": "sum by (service) (count_over_time({service=~\".+\", level=~\"ERROR|error\"}[5m]))",
                     "refId": "A",
                     "legendFormat": "{{service}}"
                   }
@@ -372,7 +379,7 @@ grafana:
                 "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
                 "targets": [
                   {
-                    "expr": "topk(10, sum(rate({namespace=~\"$namespace\", service=~\"$service\", level=~\"ERROR|error\"}[5m])) by (exception_type))",
+                    "expr": "topk(10, sum by (exception_type) (count_over_time({service=~\".+\", level=~\"ERROR|error\"}[5m])))",
                     "refId": "A"
                   }
                 ]
@@ -384,7 +391,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 8, "w": 24, "h": 8 },
                 "targets": [
                   {
-                    "expr": "topk(20, sum(rate({namespace=~\"$namespace\", service=~\"$service\", level=~\"ERROR|error\"}[10m])) by (service, msg))",
+                    "expr": "topk(20, sum by (service, msg) (count_over_time({service=~\".+\", level=~\"ERROR|error\"}[10m])))",
                     "refId": "A"
                   }
                 ]
@@ -396,7 +403,7 @@ grafana:
                 "gridPos": { "x": 0, "y": 16, "w": 24, "h": 12 },
                 "targets": [
                   {
-                    "expr": "{namespace=~\"$namespace\", service=~\"$service\"} |~ \"ERROR|Error|Exception|MongoServerSelectionError|Unauthorized|Missing token\"",
+                    "expr": "{service=~\".+\"} |~ \"ERROR|Error|Exception|MongoServerSelectionError|Unauthorized|Missing token\"",
                     "refId": "A"
                   }
                 ]
