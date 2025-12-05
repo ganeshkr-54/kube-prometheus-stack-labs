@@ -1,3 +1,9 @@
+grafana:
+  enabled: false        # <-- IMPORTANT: Disable Grafana that Loki installs
+
+datasource:
+  enabled: false        # <-- IMPORTANT: Disable auto-created Loki datasource
+
 loki:
   config:
     schema_config:
@@ -13,7 +19,7 @@ loki:
     storage_config:
       azure:
         account_name: lokistorageganesh
-        account_key: <your-key>
+        account_key: key
         container_name: loki
       boltdb_shipper:
         shared_store: azure
