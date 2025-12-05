@@ -5,7 +5,7 @@ loki:
         - from: "2024-01-01"
           store: boltdb-shipper
           object_store: azure
-          schema: v13
+          schema: v11
           index:
             prefix: loki_index_
             period: 24h
