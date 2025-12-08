@@ -1,0 +1,133 @@
+global:
+  resolve_timeout: 5m
+
+  # Slack Webhook URL
+  slack_api_url: "https://hooks.slack.com/services/YOUR/SLACK/WEBHOOK"
+
+templates:
+  - "/etc/alertmanager/slack-templates.tmpl"
+
+route:
+  receiver: "slack-default"
+
+  group_by: ["alertname", "namespace", "pod", "node"]
+  group_wait: 30s
+  group_interval: 3m
+  repeat_interval: 2h
+
+  routes:
+    # --------------------------
+    # CRITICAL ALERTS
+    # --------------------------
+    - match:
+        severity: "critical"
+      receiver: "slack-critical"
+
+    # --------------------------
+    # WARNING ALERTS
+    # --------------------------
+    - match:
+        severity: "warning"
+      receiver: "slack-warning"
+
+    # --------------------------
+    # INFO ALERTS
+    # --------------------------
+    - match:
+        severity: "info"
+      receiver: "slack-info"
+
+    # --------------------------
+    # LOG-BASED ALERTS (From Loki Derived Metrics)
+    # --------------------------
+    - match:
+        source: "loki"
+      receiver: "slack-logs"
+
+receivers:
+
+  # -------------------------------------------------------------
+  # DEFAULT RECEIVER (fallback)
+  # -------------------------------------------------------------
+  - name: "slack-default"
+    slack_configs:
+      - channel: "#k8s-default-alerts"
+        send_resolved: true
+        icon_emoji: ":bell:"
+        username: "Alertmanager"
+        title: '{{ template "slack.default.title" . }}'
+        text:  '{{ template "slack.default.message" . }}'
+
+  # -------------------------------------------------------------
+  # CRITICAL ALERTS CHANNEL
+  # -------------------------------------------------------------
+  - name: "slack-critical"
+    slack_configs:
+      - channel: "#k8s-critical-alerts"
+        send_resolved: true
+        icon_emoji: ":rotating_light:"
+        username: "K8s Critical Alerts"
+        title: '{{ template "slack.default.title" . }}'
+        text:  '{{ template "slack.default.message" . }}'
+
+  # -------------------------------------------------------------
+  # WARNING ALERTS CHANNEL
+  # -------------------------------------------------------------
+  - name: "slack-warning"
+    slack_configs:
+      - channel: "#k8s-warning-alerts"
+        send_resolved: true
+        icon_emoji: ":warning:"
+        username: "K8s Warning Alerts"
+        title: '{{ template "slack.default.title" . }}'
+        text:  '{{ template "slack.default.message" . }}'
+
+  # -------------------------------------------------------------
+  # INFO ALERTS CHANNEL
+  # -------------------------------------------------------------
+  - name: "slack-info"
+    slack_configs:
+      - channel: "#k8s-info-alerts"
+        send_resolved: true
+        icon_emoji: ":information_source:"
+        username: "K8s Info Alerts"
+        title: '{{ template "slack.default.title" . }}'
+        text:  '{{ template "slack.default.message" . }}'
+
+  # -------------------------------------------------------------
+  # LOG-BASED ALERTS FROM LOKI (Derived Metrics)
+  # -------------------------------------------------------------
+  - name: "slack-logs"
+    slack_configs:
+      - channel: "#k8s-log-alerts"
+        send_resolved: true
+        icon_emoji: ":scroll:"
+        username: "K8s Log Alerts"
+        title: '{{ template "slack.default.title" . }}'
+        text:  '{{ template "slack.default.message" . }}'
+
+# ----------------------------------------------------------------
+# INHIBITION RULES – REDUCE NOISE
+# ----------------------------------------------------------------
+inhibit_rules:
+
+  # Stop PodNotReady when CrashLoopBackOff is active
+  - source_match:
+      alertname: "PodCrashLoopBackOff"
+    target_match:
+      alertname: "PodNotReady"
+    equal: ["pod", "namespace"]
+
+  # Stop multiple Node pressure alerts when NodeNotReady is active
+  - source_match:
+      alertname: "NodeNotReady"
+    target_match:
+      alertname: "NodeMemoryPressure"
+    equal: ["node"]
+
+  # Prevent double alerts on Deployment + Pod failures
+  - source_match:
+      alertname: "DeploymentReplicasUnavailable"
+    target_match:
+      alertname: "PodCrashLoopBackOff"
+    equal: ["namespace"]
