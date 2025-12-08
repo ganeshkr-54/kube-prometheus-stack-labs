@@ -1,10 +1,83 @@
 grafana:
-  enabled: false        # <-- IMPORTANT: Disable Grafana that Loki installs
+  enabled: false        # Do not deploy Grafana from this chart
 
 datasource:
-  enabled: false        # <-- IMPORTANT: Disable auto-created Loki datasource
+  enabled: false        # Do not auto-create Loki datasource in Grafana
 
 loki:
+  derivedMetrics:
+    enabled: true
+    rules:
+
+      # CrashLoopBackOff log detection
+      - name: log_error_crashloop_total
+        match:
+          - '{container!="", stream="stderr"} |= "CrashLoopBackOff"'
+          - '{container!="", stream="stderr"} |= "back-off restarting"'
+        output: "1"
+
+      # OOMKilled detection from logs
+      - name: log_error_oomkilled_total
+        match:
+          - '{stream="stderr"} |= "OOMKilled"'
+          - '{stream="stderr"} |= "Memory cgroup out of memory"'
+          - '{stream="stderr"} |= "Killed process"'
+        output: "1"
+
+      # ImagePullBackOff & ErrImagePull
+      - name: log_error_imagepull_total
+        match:
+          - '{stream="stderr"} |= "ImagePullBackOff"'
+          - '{stream="stderr"} |= "ErrImagePull"'
+          - '{stream="stderr"} |= "pull access denied"'
+        output: "1"
+
+      # Liveness/Readiness probe failures
+      - name: log_error_probe_failure_total
+        match:
+          - '{stream="stderr"} |= "Liveness probe failed"'
+          - '{stream="stderr"} |= "Readiness probe failed"'
+        output: "1"
+
+      # FailedMount / storage failures
+      - name: log_error_failedmount_total
+        match:
+          - '{stream="stderr"} |= "FailedMount"'
+          - '{stream="stderr"} |= "unable to mount volumes"'
+        output: "1"
+
+      # API Server errors and panics
+      - name: log_error_apiserver_total
+        match:
+          - '{app="kube-apiserver"} |= "error"'
+          - '{app="kube-apiserver"} |= "panic"'
+          - '{app="kube-apiserver"} |= "timeout"'
+          - '{app="kube-apiserver"} |= "503"'
+        output: "1"
+
+      # ETCD warnings / errors
+      - name: log_error_etcd_total
+        match:
+          - '{app="etcd"} |= "error"'
+          - '{app="etcd"} |= "timeout"'
+          - '{app="etcd"} |= "leader changed"'
+        output: "1"
+
+      # CNI plugin errors (Calico/Flannel)
+      - name: log_error_cni_total
+        match:
+          - '{app=~"calico|flannel|cni"} |= "error"'
+          - '{stream="stderr"} |= "network plugin"'
+        output: "1"
+
+      # Kernel-level failures
+      - name: log_error_kernel_total
+        match:
+          - '{unit="kernel"} |= "Call Trace"'
+          - '{unit="kernel"} |= "segfault"'
+          - '{unit="kernel"} |= "kernel panic"'
+        output: "1"
+
   config:
     schema_config:
       configs:
@@ -21,6 +94,7 @@ loki:
         account_name: lokistorageganesh
         account_key: key
         container_name: loki
+
       boltdb_shipper:
         shared_store: azure
 
