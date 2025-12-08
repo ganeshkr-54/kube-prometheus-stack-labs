@@ -1,0 +1,319 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: advanced-kubernetes-alerts
+  namespace: monitoring
+  labels:
+    release: kube-prometheus-stack
+spec:
+  groups:
+
+  #########################################################
+  # 1. POD FAILURE EVENT ALERTS (From kube-event-exporter)
+  #########################################################
+  - name: pod-event-failures
+    rules:
+
+    - alert: PodCrashLoopBackOff
+      expr: event_count{reason="CrashLoopBackOff"} > 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "CrashLoopBackOff: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} (ns: {{ $labels.namespace }}) is restarting repeatedly.
+          Reason: {{ $labels.reason }}
+          Message: {{ $labels.message }}
+          Object: {{ $labels.involvedObject }}
+
+    - alert: PodImagePullBackOff
+      expr: event_count{reason="ImagePullBackOff"} > 0 or event_count{reason="ErrImagePull"} > 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "ImagePull Error: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} cannot pull image.
+          Reason: {{ $labels.reason }}
+          Message: {{ $labels.message }}
+          Image: {{ $labels.involvedObject }}
+
+    - alert: PodOOMKilled
+      expr: event_count{reason="OOMKilled"} > 0
+      for: 30s
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod OOMKilled: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} was OOMKilled.
+          Likely memory limits too low.
+          Message: {{ $labels.message }}
+
+    - alert: PodFailedMount
+      expr: event_count{reason="FailedMount"} > 0
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod FailedMount: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} failed to mount volumes.
+          Reason: {{ $labels.reason }}
+          Message: {{ $labels.message }}
+
+    - alert: PodFailedScheduling
+      expr: event_count{reason="FailedScheduling"} > 0
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod Scheduling Failure: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} cannot be scheduled.
+          Likely insufficient resources.
+          Message: {{ $labels.message }}
+
+    - alert: PodEvicted
+      expr: event_count{reason="Evicted"} > 0
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod Evicted: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} was evicted.
+          Reason: {{ $labels.reason }}
+          Message: {{ $labels.message }}"
+
+
+    - alert: PodTerminatingTooLong
+      expr: |
+        kube_pod_status_phase{phase="Terminating"} == 1
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod Terminating Too Long: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} has been terminating for more than 5 minutes.
+          May indicate finalizer issues.
+
+    - alert: PodUnhealthyLivenessProbe
+      expr: event_count{reason="Unhealthy"} > 0 and on() event_count{message=~".*Liveness probe.*"} > 0
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Liveness Probe Failed: {{ $labels.pod }}"
+        description: |
+          Container failed its Liveness Probe.
+          Message: {{ $labels.message }}
+
+    - alert: PodUnhealthyReadinessProbe
+      expr: event_count{reason="Unhealthy"} > 0 and on() event_count{message=~".*Readiness probe.*"} > 0
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Readiness Probe Failed: {{ $labels.pod }}"
+        description: |
+          Container failed its Readiness Probe.
+          Message: {{ $labels.message }}
+
+    - alert: PodContainerCannotRun
+      expr: event_count{reason="ContainerCannotRun"} > 0
+      labels:
+        severity: critical
+      annotations:
+        summary: "ContainerCannotRun: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} cannot start due to fatal runtime error.
+          Message: {{ $labels.message }}
+
+  #########################################################
+  # 2. POD METRIC-BASED FAILURE ALERTS
+  #########################################################
+  - name: pod-runtime-alerts
+    rules:
+
+    - alert: PodRestartRateHigh
+      expr: increase(kube_pod_container_status_restarts_total[5m]) > 3
+      for: 30s
+      labels:
+        severity: warning
+      annotations:
+        summary: "High Container Restart Rate: {{ $labels.pod }}"
+        description: |
+          Container restarts exceeded threshold.
+          Restarts: {{ $value }}
+
+    - alert: PodNotReady
+      expr: kube_pod_status_ready{condition="false"} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod Not Ready: {{ $labels.pod }}"
+        description: |
+          Pod {{ $labels.pod }} is not ready.
+          Check readiness probe, dependencies, logs.
+
+    - alert: PodPendingTooLong
+      expr: kube_pod_status_phase{phase="Pending"} == 1
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Pod Pending Too Long: {{ $labels.pod }}"
+        description: "Pod stuck in Pending for >10m."
+
+  #########################################################
+  # 3. NODE HEALTH ALERTS
+  #########################################################
+  - name: node-alerts
+    rules:
+
+    - alert: NodeNotReady
+      expr: kube_node_status_condition{condition="Ready",status="false"} == 1
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Node NotReady: {{ $labels.node }}"
+        description: "Node is not ready."
+
+    - alert: NodeMemoryPressure
+      expr: kube_node_status_condition{condition="MemoryPressure",status="true"} == 1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node MemoryPressure: {{ $labels.node }}"
+        description: "Node memory is under pressure."
+
+    - alert: NodeDiskPressure
+      expr: kube_node_status_condition{condition="DiskPressure",status="true"} == 1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Node DiskPressure: {{ $labels.node }}"
+        description: "Node disk is under pressure."
+
+    - alert: NodeFilesystemFull
+      expr: node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"} < 0.1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Node Disk Almost Full: {{ $labels.node }}"
+        description: "Root filesystem usage above 90%."
+
+  #########################################################
+  # 4. DEPLOYMENT & WORKLOAD ALERTS
+  #########################################################
+  - name: workload-alerts
+    rules:
+
+    - alert: DeploymentReplicasUnavailable
+      expr: kube_deployment_status_replicas_unavailable > 0
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Unavailable Deployment Replicas"
+        description: |
+          Deployment has unavailable replicas.
+          Deployment: {{ $labels.deployment }}
+
+    - alert: StatefulSetStuck
+      expr: kube_statefulset_status_replicas_ready < kube_statefulset_status_replicas
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "StatefulSet Not Fully Running"
+        description: |
+          StatefulSet replicas missing.
+          StatefulSet: {{ $labels.statefulset }}
+
+    - alert: DaemonSetNotReady
+      expr: kube_daemonset_status_number_ready < kube_daemonset_status_desired_number_scheduled
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: "DaemonSet Not Ready"
+        description: |
+          Some DaemonSet pods are not ready.
+          DaemonSet: {{ $labels.daemonset }}
+
+  #########################################################
+  # 5. STORAGE ALERTS
+  #########################################################
+  - name: storage-alerts
+    rules:
+
+    - alert: PVCBoundFailure
+      expr: kube_persistentvolumeclaim_status_phase{phase="Pending"} == 1
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "PVC Pending: {{ $labels.persistentvolumeclaim }}"
+        description: |
+          PVC has been pending >10m.
+
+    - alert: PVFailed
+      expr: kube_persistentvolume_status_phase{phase="Failed"} == 1
+      labels:
+        severity: critical
+      annotations:
+        summary: "PV Failed"
+        description: "PersistentVolume has failed."
+
+  #########################################################
+  # 6. CONTROL PLANE ALERTS
+  #########################################################
+  - name: control-plane-alerts
+    rules:
+
+    - alert: APIServerLatencyHigh
+      expr: histogram_quantile(0.99, sum(rate(apiserver_request_duration_seconds_bucket[5m])) by (verb,resource,le)) > 1
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High Kubernetes API Latency"
+        description: |
+          API server latency over 1 second.
+          Resource: {{ $labels.resource }} Verb: {{ $labels.verb }}
+
+    - alert: APIServerErrors
+      expr: sum(rate(apiserver_request_total{code=~"5.."}[2m])) > 1
+      for: 3m
+      labels:
+        severity: critical
+      annotations:
+        summary: "API Server Error Rate High"
+        description: "5xx errors detected from kube-apiserver."
+
+    - alert: ETCDHighFsyncDuration
+      expr: etcd_disk_wal_fsync_duration_seconds > 0.05
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        summary: "ETCD Write Latency High"
+        description: "ETCD fsync duration >50ms."
+
+    - alert: ETCDInsufficientMembers
+      expr: count(etcd_server_has_leader == 1) < 3
+      labels:
+        severity: critical
+      annotations:
+        summary: "ETCD quorum at risk"
+        description: "ETCD cluster has insufficient members."
+
